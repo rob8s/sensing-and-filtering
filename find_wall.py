@@ -1,11 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-WRITE = False # set to True if you want to write the data to a CSV file and process in another language
+WRITE = True # set to True if you want to write the data to a CSV file
 
-wall = [(0.1,4.), (3.,0.1)]
-
-robot = [0.,0.]
+wall = [(0.1, 4.), (3., 0.1)] # (x,y) endpoints of wall
+robot = [0., 0., 0.] # (x, y, theta)
 
 def fit_line(data):
     # Calculate x and y coords
@@ -40,26 +39,25 @@ def r2(a, b, data):
     ss_tot = np.sum((data[:,0] - np.mean(data[:,0]))**2)
     return 1 - (ss_res / ss_tot)
 
-
 # plots results (will open a window / requires Xforwarding to view over SSH)
 def PlotResults(data, a, b, wall, robot):
     fig, ax = plt.subplots()
 
     # visualize raw data
     remap_data = np.array([[d*np.cos(theta), d*np.sin(theta)] for (d, theta) in data])
-    ax.scatter(remap_data[:,0], remap_data[:,1], color='red', marker='o', label="raw data")
+    ax.scatter(remap_data[:,0], remap_data[:,1], color='red', marker='o', label="ground truth measurements")
 
     # visualize robot with heading at theta=0
-    robot = plt.Circle(robot, 0.5, fill=False, edgecolor='purple')
-    ax.add_patch(robot)
-    heading = [[0, 0.5], [0,0]]
-    ax.plot(heading[0], heading[1], color='purple')
+    viz_robo = plt.Circle(robot[0:2], 0.5, fill=False, edgecolor='purple')
+    ax.add_patch(viz_robo)
+    bearing = np.array([[robot[0], robot[1]],
+                       [robot[0]+np.cos(robot[2]), robot[1]+np.sin(robot[2])] ] )
+    ax.plot(bearing[:,0], bearing[:,1], color='purple')
 
     # visualize estimated wall line
     x = np.linspace(0,5,10)
     y = a*x+b
     ax.plot(x, y, color='blue', linestyle="--", label="estimated line")
-
     ax.legend()
 
     ax.set_xlim([-1, 5])
@@ -69,12 +67,13 @@ def PlotResults(data, a, b, wall, robot):
 
 def FindDistances(wall, robot):
     wall = np.array(wall)
-    robot = np.array(robot)
+    position = np.array(robot[0:2])
+    heading = robot[2]
     data = []
-    for theta in np.linspace(0, np.pi, 20):
-        t, u, pt = ShootRay(robot, theta, wall[0], wall[1])
+    for theta in np.linspace(heading, heading+2*np.pi, 20):
+        t, u, pt = ShootRay(position, theta, wall[0], wall[1])
         if t > 0 and (0 < u) and (1 > u):
-            dist = np.linalg.norm(pt - robot)
+            dist = np.linalg.norm(pt - position)
             data.append((round(dist,2), round(theta,2)))
     return np.array(data)
 
